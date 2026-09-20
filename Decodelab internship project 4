@@ -1,0 +1,69 @@
+"""
+===================================================================
+Project 4: Image Recognition (Basic)
+Author: Philomina Paul-Ubah
+Description: A basic image recognition script using a pre-trained
+             MobileNetV2 model to classify sample input images.
+===================================================================
+"""
+
+import tensorflow as tf
+from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2, preprocess_input, decode_predictions
+from tensorflow.keras.preprocessing import image
+import numpy as np
+import requests
+from PIL import Image
+from io import BytesIO
+
+def load_and_preprocess_image(image_source):
+    """
+    Loads and resizes an image to 224x224 pixels (required input shape for MobileNetV2).
+    Supports either a local file path or a public web URL.
+    """
+    if image_source.startswith("http://") or image_source.startswith("https://"):
+        response = requests.get(image_source)
+        img = Image.open(BytesIO(response.content)).convert('RGB')
+        img = img.resize((224, 224))
+    else:
+        img = image.load_img(image_source, target_size=(224, 224))
+
+    # Convert the PIL image to a numpy array
+    img_array = image.img_to_array(img)
+    # Add a batch dimension: (224, 224, 3) -> (1, 224, 224, 3)
+    img_array = np.expand_dims(img_array, axis=0)
+    # Preprocess pixels to scale them correctly for MobileNetV2
+    img_array = preprocess_input(img_array)
+    
+    return img_array
+
+def run_image_recognition(image_path):
+    print("=" * 50)
+    print("      PROJECT 4: IMAGE RECOGNITION (BASIC)")
+    print("      Developer: Philomina Paul-Ubah")
+    print("=" * 50)
+    
+    print("\n1. Loading pre-trained MobileNetV2 model...")
+    # Load the pre-trained MobileNetV2 model trained on ImageNet
+    model = MobileNetV2(weights='imagenet')
+    
+    print("2. Processing input image...")
+    processed_image = load_and_preprocess_image(image_path)
+    
+    print("3. Performing recognition/inference...")
+    predictions = model.predict(processed_image)
+    
+    # Decode the top 3 predictions (Class name & probability score)
+    top_predictions = decode_predictions(predictions, top=3)[0]
+    
+    print("\n--- Recognition Results ---")
+    for rank, (imagenet_id, label, score) in enumerate(top_predictions, start=1):
+        formatted_label = label.replace('_', ' ').title()
+        confidence = score * 100
+        print(f"Prediction #{rank}: {formatted_label} ({confidence:.2f}% confidence)")
+
+if __name__ == "__main__":
+    # Test with a sample online image (An African Elephant)
+    sample_image_url = "https://upload.wikimedia.org/wikipedia/commons/3/37/African_Bush_Elephant.jpg"
+    
+    # Run recognition using URL or replace with a local file path (e.g., "my_photo.jpg")
+    run_image_recognition(sample_image_url)
